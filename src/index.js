@@ -1,5 +1,10 @@
 require("dotenv").config();
-const { Client, IntentsBitField, ActivityType } = require("discord.js");
+const {
+	Client,
+	IntentsBitField,
+	ActivityType,
+	EmbedBuilder,
+} = require("discord.js");
 
 const client = new Client({
 	intents: [
@@ -9,6 +14,31 @@ const client = new Client({
 		IntentsBitField.Flags.MessageContent,
 	],
 });
+
+const getArrayChampion = async () => {
+	const URL_DATA =
+		"https://ddragon.leagueoflegends.com/cdn/13.14.1/data/en_US/champion.json";
+	let res = await fetch(URL_DATA);
+	let data = await res.json();
+	let arrKey = Object.keys(data.data);
+	let arrChamp = [];
+	arrKey.forEach((key) => {
+		arrChamp.push(data.data[key]);
+	});
+	return arrChamp;
+};
+
+const getChampionFromName = async (name) => {
+	let arr = await getArrayChampion();
+	var chamReturn = -1;
+
+	arr.forEach((champion) => {
+		if (champion["id"].toLowerCase() == name.toLowerCase()) {
+			chamReturn = champion;
+		}
+	});
+	return chamReturn;
+};
 
 client.on("ready", (c) => {
 	console.log("Aatrox đã trở lại !");
@@ -33,6 +63,57 @@ client.on("messageCreate", async (message) => {
 	if (message.author.bot) return;
 
 	const authorMessageString = message.author.toString();
+
+	const sendChampionDetails = async () => {
+		let total = await getArrayChampion();
+
+		total.forEach((o) => {
+			var squareImg = `http://ddragon.leagueoflegends.com/cdn/13.14.1/img/champion/${o["image"]["full"]}`;
+			var splashImg = `http://ddragon.leagueoflegends.com/cdn/img/champion/splash/${o["id"]}_1.jpg`;
+			var name = o["name"];
+			var title = o["title"];
+
+			const embed = new EmbedBuilder()
+				.setTitle(name)
+				.setURL(splashImg)
+				.setDescription(title)
+				.setImage(squareImg);
+
+			message.channel.send({ embeds: [embed] });
+		});
+	};
+
+	if (message.content.startsWith("info ")) {
+		try {
+			var cName = message.content.split(" ")[1];
+			let champion = await getChampionFromName(cName);
+
+			if (champion == -1) {
+				message.reply("Sai tên tướng rồi !");
+				return;
+			}
+
+			let squareImg = `http://ddragon.leagueoflegends.com/cdn/13.14.1/img/champion/${champion["image"]["full"]}`;
+			var splashImg = `http://ddragon.leagueoflegends.com/cdn/img/champion/splash/${champion["id"]}_0.jpg`;
+			var name = champion["name"];
+			var title = champion["title"];
+
+			const embed = new EmbedBuilder()
+				.setTitle(name)
+				.setURL(splashImg)
+				.setDescription(title)
+				.setImage(squareImg);
+
+			message.channel.send({ embeds: [embed] });
+		} catch (error) {
+			console.log(error);
+		}
+	}
+
+	if (message.content == "send") {
+		let cam = await getChampionFromName("yasuo");
+		console.log(cam);
+	}
 
 	const words = [
 		"Come, let me show you darkness!",
@@ -101,6 +182,57 @@ client.on("messageCreate", async (message) => {
 		"They will call me villain... Come, let me earn their hatred, again and forever.",
 	];
 
+	const badWords = [
+		"ngu",
+		"stupid",
+		"cc",
+		"dcm",
+		"dcmm",
+		"cặk",
+		"cặt",
+		"cặc",
+		"cak",
+		"cat",
+		"cac",
+		"lz",
+		"loz",
+		"lồn",
+		"lon",
+		"lồz",
+		"dick",
+		"đậu má",
+		"duma",
+		"du me",
+		"djtme",
+		"dit me",
+		"diz me",
+		"dizme",
+		"đụ má",
+		"địt mẹ",
+		"sủa",
+		"sua cc",
+		"sua",
+		"ẳng",
+	];
+
+	const badWordResponesive = [
+		"Ăn nói vô văn hóa mày !",
+		"Mày ở đâu ?",
+		"Vàng bạc mày nhiều nhở, vàng bạc mày to nhở ?",
+		"Đmm nói ít thôi, mày thích nổi tiếng không ?",
+		"Coi chừng tao, chửi thề con cặk",
+		"Chửi phát nữa lòi loz nha em",
+		"Ăn nói mất dạy vậy mày !",
+	];
+
+	if (badWords.some((word) => message.content.toLowerCase().includes(word))) {
+		const index = randomInRange(0, badWordResponesive.length - 1);
+		message.reply(badWordResponesive[index]);
+		message.react("😠");
+	}
+
+	const swearAatrox = ["aatrox ngu"];
+
 	if (message.content.startsWith(AATROX_ID)) {
 		const index = randomInRange(0, words.length - 1);
 		message.channel.send(words[index]);
@@ -128,12 +260,8 @@ client.on("messageCreate", async (message) => {
 	if (message.content.toLowerCase().startsWith("hello")) {
 		await message.channel.sendTyping();
 		message.channel.send(
-			`Xin chào ${authorMessageString}, chúc bạn ngày mới nhặc cư !`
+			`Xin chào ${authorMessageString}, chúc bạn ngày mới vui vẻ !`
 		);
-	}
-
-	if (message.content.toLowerCase().includes("cc")) {
-		message.channel.send(`Thằng ${authorMessageString} vô văn hóa !`);
 	}
 
 	if (message.mentions.users.size != 0) {
@@ -144,7 +272,9 @@ client.on("messageCreate", async (message) => {
 		message.channel.send(
 			`${userMentioned.toString()} ơi, ${authorMessageString} gọi kìa !`
 		);
-		message.delete();
+		if (message.content === userMentioned.toString()) {
+			message.delete();
+		}
 	}
 
 	if (message.content.startsWith("lore")) {
